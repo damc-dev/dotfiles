@@ -1,5 +1,10 @@
 # .bashrc
 
+# Add ~/.local/bin to PATH if it exists
+if [ -d "$HOME"/.local/bin ] ; then
+    PATH=$HOME/.local/bin:$PATH
+fi
+
 # Source global definitions
 if [ -f /etc/bashrc ]; then
         . /etc/bashrc
