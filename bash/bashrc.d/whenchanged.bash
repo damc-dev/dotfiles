@@ -5,10 +5,10 @@
 #  David McElligott <damcelli@up.com>      07/03/2015
 # -----------------------------------------------------
 
-when-changed() {
+whenchanged() {
   set -e
 
-  usage="Usage: when-changed FILE COMMAND
+  usage="Usage: whenchanged FILE COMMAND
   Run command when specified file is changed
 
   Where
@@ -16,7 +16,7 @@ when-changed() {
       -i          interval to check for changes
 
       Examples:
-          when-changed errors.log mail damcelli@up.com -s \"errors.log changed on $HOSTNAME\""
+          whenchanged errors.log mail damcelli@up.com -s \"errors.log changed on $HOSTNAME\""
        
   INTERVAL=5
 
