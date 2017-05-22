@@ -5,8 +5,9 @@ usage() {
 Pmrun a command on a list of hosts.
  
 where:
-    -h, --help  show this help text
-    -u, --user  specify user to pmrun as
+    -h, --help    show this help text
+    -u, --user    specify user to pmrun as
+    --no-headers  print no header line
 
 Examples:
     $(basename "$0") -u dusm002 starmap-dev 'echo $HOSTNAME'
