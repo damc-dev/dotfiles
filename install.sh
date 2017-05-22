@@ -11,6 +11,9 @@ function generate_script_alias() {
 shopt -s dotglob
 shopt -s nullglob
 
+# Change to dotfiles directory
+cd "$(dirname "$(readlink -f "$0")")"
+
 # Recursively download git submodules
 git submodule update --init --recursive
 
