@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+
+usage() {
+  echo "Usage: $(basename "$0") [OPTION] [LIST_FILE] (COMMAND|Bash Script)
+Pmrun a command on a list of hosts.
+ 
+where:
+    -h, --help  show this help text
+    -u, --user  specify user to pmrun as
+
+Examples:
+    $(basename "$0") -u dusm002 starmap-dev 'echo $HOSTNAME'
+
+"
+}
+
+_error() {
+    local error_msg=$1
+    echo "[ERROR] $error_msg"
+    usage
+    exit 1
+}
+
+# Default User Id
+USER_ID=dusm002
+
+NORMAL=$(tput sgr0)
+BLINK=$(tput blink)
+UNDERLINE=$(tput smul)
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+
+while [ "$1" != "" ]; do
+    case $1 in
+	-h | --help )
+		usage
+		exit 0
+		;;
+	-u | --user )
+		shift
+		USER_ID=$1
+		;;
+	--no-headers )
+		NO_HEADERS=true
+		;;
+	-* | --* )
+		_error "Invalid Flag: $1"
+		;;
+	* )
+		list_file=$1
+		shift
+		command="${*}"	
+		;;
+    esac
+    shift
+done
+
+if [ "$list_file" == "" ] | [ "$command" == "" ]; then
+    _error "Requires two arguments"
+fi
+
+TMP_DIR="$(mktemp -d -t dpmrun.XXXXXXXXXX)"
+function cleanup {
+    rm -rf $TMP_DIR
+}
+
+trap cleanup EXIT
+
+PIDS=() 
+
+for host in `cat $list_file`; do
+    (
+	THIS_PID="$BASHPID"
+	if [ -f "$command" ]; then
+	    pmrun -p -h $host $USER_ID 'cat | bash /dev/stdin' < $command > "$TMP_DIR/$THIS_PID.out"
+	    exit_code="$?"
+	else
+	    pmrun -p -h $host $USER_ID $command 2>&1 > "$TMP_DIR/$THIS_PID.out"
+	    exit_code="$?"
+	fi
+	echo "$host $exit_code" > "$TMP_DIR/$THIS_PID.info"
+    ) &
+    PID="$!"
+    PIDS+=("$PID")
+done
+
+[ "$NO_HEADERS" != "true" ] && echo ""
+for PID in "${PIDS[@]}"; do
+    wait $PID
+    read -r host exitCode < "$TMP_DIR/$PID.info"
+    result="$(cat $TMP_DIR/$PID.out)"
+    if [ "$NO_HEADERS" == "true" ]; then
+		echo "$result"
+    else
+		if [ "$exitCode" == "0" ]; then
+			printf "${GREEN}%-3s" $exitCode
+		else
+			printf "${RED}%-3s" $exitCode
+		fi
+		if [ $(echo "$result" | grep -c '$') -le 1 ]; then  
+			printf "[%11s ]${NORMAL}: %s\n\n" $host "$result"
+		else
+			printf "[%11s ]${NORMAL}:\n%s\n\n" $host "$result"
+		fi
+	fi
+done
