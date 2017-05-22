@@ -11,6 +11,9 @@ function generate_script_alias() {
 shopt -s dotglob
 shopt -s nullglob
 
+# Recursively download git submodules
+git submodule update --init --recursive
+
 # Copy files to ~/
 for file in $HOME/dotfiles/copy/*; do
   echo $file
