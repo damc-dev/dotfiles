@@ -9,7 +9,8 @@
 	url = https://github.com/godlygeek/tabular.git
 [submodule "link/.vim/bundle/snippets"]
 	path = link/.vim/bundle/snippets
-	url = https://github.com/honza/vim-snippets.git
+  url = https://github.com/honza/vim-snippets.git
+  ignore = all
 [submodule "link/.vim/bundle/syntastic"]
 	path = link/.vim/bundle/syntastic
 	url = https://github.com/scrooloose/syntastic.git
