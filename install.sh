@@ -19,7 +19,6 @@ git submodule update --init --recursive
 
 # Copy files to ~/
 for file in $HOME/dotfiles/copy/*; do
-  echo $file
   cp "$file" ~/
 done
 
