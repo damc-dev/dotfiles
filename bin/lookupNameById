@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# Lookup Name by UserId
+#
+# Usage:
+#  lookupNameById igen829
+
+ID=$1
+
+if [[  -z "$ID" ]]; then
+   echo "$0: Error. Must supply TCSID as argument"
+   exit
+fi
+
+NAME=`curl -s http://home.www.uprr.com/uit-rest-user-contact/jas/user?q=userId:$ID | awk -F "fullName|middleInitial" '{print $2}' | sed "s/[\"\:\,]//g"`
+
+if [[ -z "$NAME" ]]; then
+   echo "N/A"
+else
+   echo "$NAME"
+fi

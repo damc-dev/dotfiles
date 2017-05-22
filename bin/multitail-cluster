@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+#set -x
+
+usage() {
+  echo "Usage: $(basename "$0") [OPTION] [log path]
+Multitail for remote hosts in cluster
+
+where:
+    -h, --help          show this help text
+    -e, --environment   cluster environment
+    -c, --cluster       cluster name
+    -i, --instance      instance name
+    -u, --user          user id to execute remote tail command as
+
+Examples:
+    $(basename "$0") -e dev -c USM_OS_AGNT-A /logs/jhe/usm/systems-mgmt-agent-timed-job-report-oracle-availability/main.log
+
+"
+}
+
+
+_error() {
+  echo "[ERROR] $1"
+  usage
+  exit 1
+}
+
+selectApp() {
+  local host="$1"
+  local user="$2"
+  local apps=($(pmrun -p -h $host $user 'ps -fp $(pgrep -d, -x java) | grep -oP "(?<=(app.name|jbs.name)=).*?(?= )"'))
+  
+  if [ ${#apps[@]} -eq 0 ]; then
+    exit 6
+  fi
+
+  PS3='Please enter your choice: '
+  select app in "${apps[@]}"; do
+    SELECTED="$app"
+    break
+  done
+  echo $SELECTED
+}
+
+selectLogFile() {
+  local host="$1"
+  local user="$2"
+  local app="$3"
+  local logs=($(pmrun -p -h $host $user 'ps -fp $(pgrep -d, -f '$app') | grep -v grep | grep -oP "(?<=(app.logdir|jbs.logdir)=).*?(?= )" | xargs -I % find % -iname "*.log"'))
+  if [ ${#logs[@]} -eq 0 ]; then
+    exit 5
+  fi
+
+  PS3='Please enter your choice: '
+  select log in "${logs[@]}"; do
+    SELECTED="${log//[[:digit:]].log/*.log}"
+    break
+  done
+  echo $SELECTED
+}
+
+while [ "$1" != "" ]; do
+  case $1 in
+    -h | --help )
+      usage
+      exit 0
+      ;;
+    -e | --environment )
+      shift
+      ENVIRONMENT=$1
+      ;;
+    -c | --cluster )
+      shift
+      CLUSTER=$1
+      ;;
+    -i | --instance )
+      shift
+      INSTANCE=$1
+      ;;
+    -u | --user )
+      shift
+      USERID=$1
+      ;;
+    -* | --* )
+      _error "Invalid Flag: $1"
+      ;;
+    * )
+      LOGFILE=$1
+      shift
+      ;;
+  esac
+  shift
+done
+
+if [ "$CLUSTER" == "" ] && [ "$INSTANCE" = "" ]; then
+  _error "Cluster or Instance is required"
+fi
+
+if [ "$ENVIRONMENT" == "" ]; then
+  _error "Environment is required"
+fi
+
+LAST_INSTANCE=""
+declare -A hosts=( ) users=( )
+while IFS= read -r instance &&
+      IFS= read -r host &&
+      IFS= read -r user; do
+  hosts[$instance]=$host
+  users[$instance]=$user
+  LAST_INSTANCE=$instance
+done < <(curl -s "https://admin.www.uprr.com/sgi/services/jas/inv-v2/instance?environment=$ENVIRONMENT&group=$CLUSTER&instance=$INSTANCE" | /usr/local/bin/rhn/jq/current/jq-linux64 -r '.[] | (.name, .host.name, .userId)')
+
+if [ "$LOGFILE" == "" ]; then
+  host="${hosts[$LAST_INSTANCE]}"
+  user="${USERID:-${users[$LAST_INSTANCE]}}"
+  APP="$(selectApp $host $user)"
+  if [ $? != 0 ]; then 
+    _error "No applications found on $host"
+  fi
+  LOGFILE="$(selectLogFile $host $user $APP)"
+  if [ $? != 0 ]; then
+    _error "No logfiles found for $APP"
+  fi
+fi
+
+CMD="/usr/bin/multitail --mergeall -t '$ENVIRONMENT $CLUSTER'"
+colors=( "green" "red" "yellow" "cyan" "blue" "white" )
+colorsLen=${#colors[@]}
+iter=0
+for instance in "${!hosts[@]}"; do
+ if [[ $iter -ge $colorsLen ]]; then
+   iter=0
+ fi
+ color="${colors[$iter]}"
+ host="${hosts[$instance]}"
+ user="${USERID:-${users[$instance]}}"
+ CMD="$CMD --label '$instance ' -ci $color -l \"pmrun -p -h $host $user 'tail -f $LOGFILE'\""
+ iter=$(expr $iter + 1) 
+done
+
+eval $CMD

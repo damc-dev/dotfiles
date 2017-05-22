@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+
+usage() {
+  echo "Usage: $(basename "$0") [OPTION] [log path]
+tmux windows for remote hosts in cluster
+
+where:
+    -h, --help          show this help text
+    -e, --environment   cluster environment
+    -c, --cluster       cluster name
+    -n, --new           creates a new tmux session even if one already exists
+
+Examples:
+    $(basename "$0") -e dev -c USM_OS_AGNT-A
+
+"
+
+}
+
+function toUpperCase {
+  local word=$1
+  local upperCaseWord="$(tr '[:lower:]' '[:upper:]' <<< "$word")"
+  echo "${upperCaseWord}"
+}
+
+
+_error() {
+  local error_msg=$1
+  echo "[ERROR] $error_msg"
+  usage
+  exit 1
+}
+
+while [ "$1" != "" ]; do
+  case $1 in
+    -h | --help )
+      usage
+      exit 0
+      ;;
+    -e | --environment )
+      shift
+      ENVIRONMENT="$(toUpperCase $1)"
+      ;;
+    -c | --cluster )
+      shift
+      CLUSTER=$1
+      ;;
+    -n | --new )
+      shift
+      NEW_SESSION=true
+      ;;
+    -* | --* )
+      _error "Invalid Flag: $1"
+      ;;
+    * )
+      LOGFILE=$1
+      shift
+      ;;
+  esac
+  shift
+done
+
+if [ "$CLUSTER" == "" ]; then
+  _error "Cluster is required"
+fi
+
+if [ "$ENVIRONMENT" == "" ]; then
+  _error "Environment is required"
+fi
+
+TMUX_SESSION="$ENVIRONMENT-$CLUSTER"
+
+# Kill tmux session if it exists so a new one will be created
+if [ "$NEW_SESSION" = true ]; then
+  tmux kill-session -t "$TMUX_SESSION"
+fi
+
+# Attach to tmux session and exit if it exists else create the session
+tmux attach -t "$TMUX_SESSION" 2> /dev/null && exit 0 || tmux new-session -d -s "$TMUX_SESSION"
+
+# Make window 0 active window and rename it
+tmux select-window -t "$TMUX_SESSION":0
+tmux rename-window 'Home'
+
+# Get instances for environment and cluster from SGI
+instances=( )
+declare -A hosts=( ) users=( )
+while IFS= read -r instance &&
+      IFS= read -r host &&
+      IFS= read -r user; do
+  instances+=( "$instance" )
+  hosts[$instance]=$host
+  users[$instance]=$user
+done < <(curl -s "https://admin.www.uprr.com/sgi/services/jas/inv-v2/instance?environment=$ENVIRONMENT&group=$CLUSTER" | /usr/local/bin/rhn/jq/current/jq-linux64 -r '.[] | (.name, .host.name, .userId)')
+
+# Sort Instances
+IFS=$'\n' instances=($(sort --version-sort <<<"${instances[*]}"))
+unset IFS
+
+# Create tmux window in session connected to host for each instance
+iter=1
+for instance in "${instances[@]}"; do
+  host="${hosts[$instance]}"
+  user="${users[$instance]}"
+  tmux new-window -d -t "$TMUX_SESSION":"$iter" -n "$instance" "pmrun -h $host $user"
+  iter=$(expr $iter + 1) 
+done
+
+# Attach to created tmux session
+tmux attach -t "$TMUX_SESSION"
