@@ -37,9 +37,7 @@
   changed = green
   untracked = cyan
 [push]
-  default = simple
-[merge]
-  log = true
+  default = matching
 [url "git@github.com:"]
   insteadOf = "gh:"
   pushInsteadOf = "github:"

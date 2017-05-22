@@ -1,5 +1,8 @@
 # .bashrc
 
+shopt -s dotglob
+shopt -s nullglob
+
 # Source global definitions
 if [ -f /etc/bashrc ]; then
         . /etc/bashrc
