@@ -1,0 +1,18 @@
+[submodule "link/.vim/bundle/colors-solarized"]
+	path = link/.vim/bundle/colors-solarized
+	url = https://github.com/altercation/vim-colors-solarized.git
+[submodule "link/.vim/bundle/colors-monokai"]
+	path = link/.vim/bundle/colors-monokai
+	url = https://github.com/sickill/vim-monokai.git
+[submodule "link/.vim/bundle/tabular"]
+	path = link/.vim/bundle/tabular
+	url = https://github.com/godlygeek/tabular.git
+[submodule "link/.vim/bundle/syntastic"]
+	path = link/.vim/bundle/syntastic
+	url = https://github.com/scrooloose/syntastic.git
+[submodule "link/.vim/bundle/colors-gruvbox"]
+	path = link/.vim/bundle/colors-gruvbox
+	url = https://github.com/morhetz/gruvbox.git
+[submodule "link/.vim/bundle/vim-flavored-markdown"]
+	path = link/.vim/bundle/vim-flavored-markdown
+	url = https://github.com/jtratner/vim-flavored-markdown.git
