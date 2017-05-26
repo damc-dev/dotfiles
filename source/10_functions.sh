@@ -1,3 +1,8 @@
+# uuencode alternative
+encode() {
+  python -c 'import sys,uu; uu.encode("'$1'", sys.stdout)'
+}
+
 # Replace newlines with commas
 listjoin() {
   cat $@ | awk -vORS=, 'NF { print $1 }'| sed 's/,$/\n/'
