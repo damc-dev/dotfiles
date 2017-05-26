@@ -44,10 +44,31 @@ recentRpms() {
 }
 
 sendme() {
-  file=$1
-  if [ -a "$file" ]; then
-      cat "$file" | uuencode "$file" | mail damcelli@up.com -s "!SAVE: sendme $file from $HOSTNAME"
+  FROM="$(whoami)@up.com"
+  TO="damcelli@up.com"
+  FILE=""
+  usage() { echo "$0 usage:"  && grep " .)\ #" $0; exit 0; }
+  while getopts ":ts: --long to:subject:" opt; do
+    case "${opt}" in
+      t | to ) # List of email addresses to send to (comma delimited)
+        TO="${OPTARG}"
+        ;;
+      s | subject ) # Subject of email (default: "!SAVE sendme $file from $HOSTNAME")
+        SUBJECT="${OPTARG}"
+        ;;
+      h | * )
+        usage
+        exit 0
+        ;;
+    esac
+  done
+  shift $(expr $OPTIND - 1 )
+  FILE="$1"
+
+  if [ -z "${SUBJECT}" ]; then
+    SUBJECT="!SAVE sendme $FILE from $HOSTNAME"
   fi
+  encode $FILE | mail -s "${SUBJECT}" -r "${FROM}" $TO
 }
 
 whenchanged() {
