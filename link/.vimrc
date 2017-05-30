@@ -28,3 +28,6 @@ augroup markdown
     au!
     au BufNewFile,BufRead *.md,*.markdown setlocal filetype=ghmarkdown
 augroup END
+
+" vim-json disable syntax conceal
+let g:vim_json_syntax_conceal = 0
