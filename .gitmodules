@@ -19,3 +19,6 @@
 [submodule "link/.vim/bundle/json"]
 	path = link/.vim/bundle/json
 	url = https://github.com/elzr/vim-json.git
+[submodule "link/.vim/bundle/chef"]
+	path = link/.vim/bundle/chef
+	url = https://github.com/dougireton/vim-chef.git
