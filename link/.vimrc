@@ -11,7 +11,7 @@ set hidden " Leave hidden buffers open
 
 autocmd BufEnter * silent! lcd %:p:h " cd's to directory of file in window
 set t_Co=256
-colorscheme monokai
+colorscheme solarized
 highlight comment ctermfg=darkgray
 set bg=dark
 
