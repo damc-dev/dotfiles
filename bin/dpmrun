@@ -76,7 +76,7 @@ for host in `cat $list_file`; do
 	    pmrun -p -h $host $USER_ID 'cat | bash /dev/stdin' < $command > "$TMP_DIR/$THIS_PID.out"
 	    exit_code="$?"
 	else
-	    pmrun -p -h $host $USER_ID $command 2>&1 > "$TMP_DIR/$THIS_PID.out"
+	    pmrun -p -h $host $USER_ID $command &> "$TMP_DIR/$THIS_PID.out"
 	    exit_code="$?"
 	fi
 	echo "$host $exit_code" > "$TMP_DIR/$THIS_PID.info"

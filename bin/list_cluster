@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+#set -x
+
+usage() {
+  echo "Usage: $(basename "$0") [OPTION] [log path]
+Multitail for remote hosts in cluster
+
+where:
+    -h, --help          show this help text
+    -e, --environment   cluster environment
+    -c, --cluster       cluster name
+    -i, --instance      instance name
+    -u, --user          user id to execute remote tail command as
+
+Examples:
+    $(basename "$0") -e dev -c USM_OS_AGNT-A /logs/jhe/usm/systems-mgmt-agent-timed-job-report-oracle-availability/main.log
+
+"
+}
+
+
+_error() {
+  echo "[ERROR] $1"
+  usage
+  exit 1
+}
+
+while [ "$1" != "" ]; do
+  case $1 in
+    -h | --help )
+      usage
+      exit 0
+      ;;
+    -e | --environment )
+      shift
+      ENVIRONMENT=$1
+      ;;
+    -c | --cluster )
+      shift
+      CLUSTER=$1
+      ;;
+    -i | --instance )
+      shift
+      INSTANCE=$1
+      ;;
+    -s | --service-name )
+      shift
+      SERVICE_NAME=$1
+      ;;
+    -* | --* )
+      _error "Invalid Flag: $1"
+      ;;
+    * )
+      shift
+      ;;
+  esac
+  shift
+done
+
+if [ "$CLUSTER" == "" ] && [ "$INSTANCE" = "" ]; then
+  _error "Cluster or Instance is required"
+fi
+
+# if [ "$ENVIRONMENT" == "" ]; then
+#   _error "Environment is required"
+# fi
+
+LAST_INSTANCE=""
+declare -A hosts=( ) users=( )
+while IFS= read -r instance &&
+      IFS= read -r host &&
+      IFS= read -r user; do
+  hosts[$instance]=$host
+  users[$instance]=$user
+  LAST_INSTANCE=$instance
+done < <(curl -s "https://admin.www.uprr.com/sgi/services/jas/inv-v2/instance?environment=$ENVIRONMENT&group=$CLUSTER&instance=$INSTANCE&service-name=$SERVICE_NAME" | /usr/local/bin/rhn/jq/current/jq-linux64 -r '.[] | (.name, .host.name, .userId)')
+
+for instance in "${!hosts[@]}"; do
+ host="${hosts[$instance]}"
+ user="${USERID:-${users[$instance]}}"
+ echo "$host"
+done
