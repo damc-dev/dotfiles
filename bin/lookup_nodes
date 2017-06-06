@@ -16,7 +16,6 @@ USER="$(whoami)"
 
 if [ -z ${PASWD+x} ]; then
   read -s -p "Password:" password
-  export PASWD="$(base64 <<< ${password})"
 else
   password="$(base64 --decode <<< ${PASWD})"
 fi
