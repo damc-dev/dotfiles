@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# Lookup Chef Node
+#
+# Usage:
+#  lookup_nodes role:USM_JHE_STANDALONE
+
+QUERY="$@"
+
+if [ -z ${QUERY+x} ]; then
+   echo "$0: Error. Must supply server as argument"
+   exit
+fi
+
+USER="$(whoami)"
+
+if [ -z ${PASWD+x} ]; then
+  read -s -p "Password:" password
+  export PASWD="$(base64 <<< ${password})"
+else
+  password="$(base64 --decode <<< ${PASWD})"
+fi
+
+SMSESSION="$( \
+  curl -s -X POST \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "user=$USER&password=${password}&env="\
+    https://services.www.up.com/smservices/jas/SmAuthServlet \
+    |  /usr/local/bin/rhn/jq/current/jq-linux64 -r '.smsession.value' \
+)"
+
+curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -H "Cookie: SMSESSION=${SMSESSION}" \
+  -d "{\"searchQuery\":\"$QUERY\",\"rows\":9999,\"start\":0}" \
+  https://home.www.uprr.com/cfg/services/secure/jas/node/search \
+  | /usr/local/bin/rhn/jq/current/jq-linux64 -r '.nodes[]'
