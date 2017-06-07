@@ -22,3 +22,6 @@
 [submodule "link/.vim/bundle/chef"]
 	path = link/.vim/bundle/chef
 	url = https://github.com/dougireton/vim-chef.git
+[submodule "link/.vim/bundle/golang"]
+	path = link/.vim/bundle/golang
+	url = https://github.com/fatih/vim-go.git
