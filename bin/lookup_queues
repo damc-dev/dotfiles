@@ -1,0 +1,36 @@
+#! /bin/bash
+
+if [ $# -ne 3 ]
+then
+    echo "Expected usage: $0 tcs_id password tla"
+    exit
+fi
+
+USER=$1
+PASS=$2
+TLA=$3
+COOKIES="cookies.tmp"
+OPTIONS="-q --no-check-certificate --keep-session-cookies --save-cookies=$COOKIES --load-cookies=$COOKIES"
+function authenticate()
+{
+    AUTH_URL="https://home.www.uprr.com/admin/login.fcc" # login page to hit
+    SESS_URL="https://employees.www.uprr.com/" # secure page to redirect to (in order to get SMSESSION cookie)
+    AUTH_DATA="USER=$USER&PASSWORD=$PASS&target=$SESS_URL" # data we are posting to the page
+    wget -O /dev/null --post-data=$AUTH_DATA $OPTIONS $AUTH_URL # authenticate and retrieve necessary cookies
+}
+
+authenticate
+QUEUES=(`wget $OPTIONS -O- --post-data="tla=$TLA&factory=&contact=&destination=" "http://home.www.uprr.com/jms_reports/upDestRepoSearch.jas" | sed -n -r 's/.*(id=)([^"]*).*/\2/p'`)
+for ID in "${QUEUES[@]}"
+do
+    DATA=`wget -O - $OPTIONS "http://home.www.uprr.com/jms_reports/upViewDestInfo.jas?id=$ID" | egrep -A 1 "Date Created in|<div class=\"ricGroupbox\" ric:title=\""`
+    XDEV=`echo "$DATA" | awk "/DEV/{getline; print}" | sed -n -r 's/.*(<dd>)([^<]*).*/\2/p'`
+    TEST=`echo "$DATA" | awk "/TST/{getline; print}" | sed -n -r 's/.*(<dd>)([^<]*).*/\2/p'`
+    PROD=`echo "$DATA" | awk "/PRD/{getline; print}" | sed -n -r 's/.*(<dd>)([^<]*).*/\2/p'`
+    NAME=`echo "$DATA" | sed -n -r 's/.*(title=")([^"]*).*/\2/p'`
+
+    [ ${#XDEV} -lt 3 ] && echo Queue $NAME has not been created in dev!
+    [ ${#TEST} -lt 3 ] && echo Queue $NAME has not been created in test!
+    [ ${#PROD} -lt 3 ] && echo Queue $NAME has not been created in prod!
+done
+

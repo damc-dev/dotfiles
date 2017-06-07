@@ -13,6 +13,18 @@ fget () {
   curl -O "$@"
 }
 
+setpassword() {
+  read -s -p "Password:" password
+  echo
+  export PASWD="$(base64 <<< ${password})"
+  echo "password set"
+}
+
+nopassword() {
+  unset PASWD
+  echo "password unset"
+}
+
 dowhile() {
   while true; do
     $@
