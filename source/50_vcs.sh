@@ -19,3 +19,23 @@ svnco() {
   fi
 }
 
+svnignore() {
+  if [ ! -d ".svn" ]; then
+    echo "No .svn found in directory"
+    exit 1
+  fi
+  for ignore_file in ".svnignore" ".gitignore"; do
+    if [ -f "${ignore_file}" ]; then
+      svn add "${ignore_file}"
+      svn propset svn:ignore -F "${ignore_file}" .
+      svn commit -m "Added ${ignore_file} to svn:ignore list"
+      echo "Successfully added following files to svn:ignore list"
+      cat "${ignore_file}"
+    fi
+  done
+
+  if [ -z ${ignore_file+x} ]; then
+    echo "No .svnignore or .gitignore file found in directory"
+    exit 1
+  fi
+}

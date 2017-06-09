@@ -13,6 +13,7 @@ fget () {
   curl -O "$@"
 }
 
+# Set password in session
 setpassword() {
   read -s -p "Password:" password
   echo
@@ -20,6 +21,7 @@ setpassword() {
   echo "password set"
 }
 
+# Remove password from session
 nopassword() {
   unset PASWD
   echo "password unset"
