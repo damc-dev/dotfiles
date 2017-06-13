@@ -7,6 +7,7 @@ Pmrun a command on a list of hosts.
 where:
     -h, --help    show this help text
     -u, --user    specify user to pmrun as
+    -s, --serial  do not run parallel
     --no-headers  print no header line
 
 Examples:
@@ -41,6 +42,9 @@ while [ "$1" != "" ]; do
 		shift
 		USER_ID=$1
 		;;
+  -s | --serial )
+    SERIAL=true
+    ;;
 	--no-headers )
 		NO_HEADERS=true
 		;;
@@ -83,6 +87,13 @@ for host in `cat $list_file`; do
     ) &
     PID="$!"
     PIDS+=("$PID")
+    if [ "$SERIAL" == "true" ]; then
+      wait $PID
+      read -r host exitCode < "$TMP_DIR/$PID.info"
+		  if [ "$exitCode" != "0" ]; then
+        break;
+      fi
+    fi
 done
 
 [ "$NO_HEADERS" != "true" ] && echo ""
