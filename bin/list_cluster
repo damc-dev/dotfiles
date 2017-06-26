@@ -25,6 +25,12 @@ _error() {
   exit 1
 }
 
+toLowerCase() {
+    local word=$1
+    local lowercaseWord="$(tr '[:upper:]' '[:lower:]' <<< "$word")"
+    echo "${lowercaseWord}"
+}
+
 while [ "$1" != "" ]; do
   case $1 in
     -h | --help )
@@ -70,9 +76,10 @@ declare -A hosts=( ) users=( )
 while IFS= read -r instance &&
       IFS= read -r host &&
       IFS= read -r user; do
-  hosts[$instance]=$host
-  users[$instance]=$user
-  LAST_INSTANCE=$instance
+  inst="$(toLowerCase "$instance")"
+  hosts[$inst]="$(toLowerCase "$host")"
+  users[$inst]="$(toLowerCase "$user")"
+  LAST_INSTANCE=$inst
 done < <(curl -s "https://admin.www.uprr.com/sgi/services/jas/inv-v2/instance?environment=$ENVIRONMENT&group=$CLUSTER&instance=$INSTANCE&service-name=$SERVICE_NAME" | /usr/local/bin/rhn/jq/current/jq-linux64 -r '.[] | (.name, .host.name, .userId)')
 
 for instance in "${!hosts[@]}"; do
