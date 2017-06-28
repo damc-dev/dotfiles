@@ -25,3 +25,6 @@
 [submodule "link/.vim/bundle/golang"]
 	path = link/.vim/bundle/golang
 	url = https://github.com/fatih/vim-go.git
+[submodule "link/.tmux/plugins/tpm"]
+	path = link/.tmux/plugins/tpm
+	url = https://github.com/tmux-plugins/tpm
