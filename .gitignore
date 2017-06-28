@@ -2,5 +2,6 @@
 .git/
 .git
 # Ignore Tmux plugins installed by TPM
-!link/.tmux/plugins/tpm
-link/.tmux/plugins/ 
+link/.tmux/plugins/** 
+link/.tmux/plugins/**/ 
+link/.tmux/plugins/tpm
