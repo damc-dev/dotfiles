@@ -2,8 +2,5 @@
 .git/
 .git
 # Ignore Tmux plugins installed by TPM
-link/.tmux/plugins/tmux-resurrect/
-link/.tmux/plugins/tmux-sensible/
-link/.tmux/plugins/** 
-link/.tmux/plugins/**/ 
+link/.tmux/plugins/*/
 link/.tmux/plugins/tpm
