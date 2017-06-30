@@ -1,0 +1,126 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Getopt::Long;
+use Env;
+
+my $log_file = "$ENV{HOME}/.logs/tab.log";
+my $opts = &get_options();
+open(LOG, ">>$log_file")
+    or warn "Can't open logfile, $log_file, running anyway\n";
+if ($ENV{STY}) {
+    if (defined $opts->{'kill'}) {
+        &exit_screen_tab($opts->{'kill'});
+    } elsif (defined $opts->{'kill_gt'}) {
+        for (my $i = $opts->{'kill_gt'}; $i < 100; $i++) {
+            &exit_screen_tab($i);
+        }
+    } elsif ($#ARGV >= 0) {
+        &open_screen_tab(&load_config);
+    } else {
+        &usage();
+    }
+} elsif ($ENV{TMUX}) {
+    if (defined $opts->{'kill'}) {
+        &critical_error("Error: Not implemented for tmux");
+    } elsif ($#ARGV >= 0) {
+        &open_tmux_tab(&load_config);
+    } else {
+        &usage();
+    }
+} else {
+    &critical_error("Error: Not in screen session");
+}
+
+sub load_config {
+  my $user;
+  my $server;
+  my $name;
+
+  $user = $ARGV[0] or &critical_error("Error: user is required");
+  $server = $ARGV[1] or &critical_error("Error: server is required");
+  $name = ($ARGV[2] || $ARGV[1] . "@" . $ARGV[0]);
+  return { "user" => $user, "server" => $server, "name" =>$name };
+}
+
+sub open_screen_tab {
+    my $data = shift;
+    my $name = $data->{name};
+    my $user = $data->{user};
+    my $server = $data->{server};
+   
+    logg("INFO", "Info: Connected to { name => $name, user => $user, server => $server }");
+    system("screen -t $name pmrun -h $server $user");
+}
+
+sub open_tmux_tab {
+    my $data = shift;
+    my $name = $data->{name};
+    my $user = $data->{user};
+    my $server = $data->{server};
+   
+    logg("INFO", "Info: Connected to { name => $name, user => $user, server => $server }");
+    system("tmux new-window -n '$name' 'pmrun -h $server $user'");
+}
+
+sub exit_screen_tab {
+    my $tab_number = shift;
+    if (!$tab_number || $tab_number != $tab_number+0) {
+        logg("ERROR", "Error: $tab_number is not a number");
+        die "Error: $tab_number is not a number";
+    } else {
+        logg("INFO", "Info: Sending exit command to $ENV{STY} tab #$tab_number");
+        my $command = "screen -S $ENV{STY} -p $tab_number -X stuff \$\'exit\\r\'";
+        system($command);
+    }
+}
+
+sub get_options {
+    my $opts;
+    my $help;
+    my $opt_rc = GetOptions(
+        "h|help"    => \$help,
+        "k|kill=i"     => \$opts->{kill},
+        "kgt|kill_greater_than=i" => \$opts->{kill_gt}
+    );
+            
+    if(!$opt_rc || $help) {
+        &usage();
+    }
+    return $opts;
+}
+
+sub usage {
+    my $text = shift;
+    print "$text\n\n" if defined $text;
+
+    print <<EOB;
+    Usage:
+      $0 user hostname [tab name]
+            OR
+      $0  -h|--help
+EOB
+    exit 3;
+}
+
+sub logg {
+    my $lvl = shift;
+    my $msg = shift;
+
+    my $time = localtime;
+    my $output = "$time -- $lvl -- $msg\n";
+
+    print LOG $output if fileno LOG;
+    # don't print to STDOUT if not tty
+    if ($lvl eq "ERROR") {
+        print $output if -t STDOUT;
+    }
+}
+
+sub critical_error {
+    my $error_msg = shift;
+    logg("ERROR", $error_msg);
+    exit 1;
+}
