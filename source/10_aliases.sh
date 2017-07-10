@@ -20,7 +20,6 @@ alias egrep='egrep --color=auto'
 alias ta='tmux attach -t'
 alias tnew='tmux new -s'
 alias tls='tmux ls'
-alias tkill='tmux kill-session -t'
 
 # Stopwatch
 alias timer='echo "Timer started. Stop with Ctrl-D." && date && time cat && date'
