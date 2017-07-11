@@ -8,6 +8,11 @@ listjoin() {
   cat $@ | awk -vORS=, 'NF { print $1 }'| sed 's/,$/\n/'
 }
 
+# List lines in first file not in second file
+missinglines() {
+  comm -23 <(sort "$1") <(sort "$2")
+}
+
 # File get
 fget () {
   curl -O "$@"
