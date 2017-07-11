@@ -68,7 +68,7 @@ if [ "$list_file" == "" ] | [ "$command" == "" ]; then
     _error "Requires two arguments"
 fi
 
-if [ "$FAIL_FAST" == "true" ] & [ "$SERIAL" != "true" ]; then
+if [ "$FAIL_FAST" == "true" ] && [ "$SERIAL" != "true" ]; then
     _error "--fail-fast only applicable with --serial"
 fi
 
