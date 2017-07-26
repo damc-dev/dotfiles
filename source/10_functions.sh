@@ -38,6 +38,14 @@ dowhile() {
   done
 }
 
+largestfiles() {
+  find $1 -type f -exec du -ah {} \; | sort -k1 -h
+}
+
+largestdirs() {
+  du -h $1 | sort -k1 -h
+}
+
 TopMemUsage() {
     ps aux | sort -nk +4 | tail
 }
