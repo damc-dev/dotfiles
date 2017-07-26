@@ -42,6 +42,10 @@ TopMemUsage() {
     ps aux | sort -nk +4 | tail
 }
 
+lastcommand() {
+  fc -ln "$1" "$1" | sed '1s/^[[:space:]]*//'
+}
+
 cleantemp() {
   cd ~/
   tar -zcvf $BACKUP_DIR/$(date +"%Y-%m-%d_%H%M%S").temp.tar.gz temp
