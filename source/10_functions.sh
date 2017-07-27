@@ -1,3 +1,8 @@
+# Email me a reminder
+remindme() {
+  echo "Reminder sent from $HOSTNAME at $(date)" | mail -s '!REMINDER '"$1" -r "$(whoami)@up.com" damcelli@up.com
+}
+
 # Replace newlines with commas
 listjoin() {
   cat $@ | awk -vORS=, 'NF { print $1 }'| sed 's/,$/\n/'
