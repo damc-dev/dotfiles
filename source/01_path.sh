@@ -12,6 +12,7 @@ function path_remove() {
 paths=(
   ~/.local/bin
   $DOTFILES/bin
+  /opt/chefdk/embedded/bin
 )
 
 export PATH
