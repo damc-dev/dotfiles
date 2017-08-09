@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 usage() {
   echo "Usage: $(basename "$0") [OPTION] [log path]
@@ -46,7 +47,6 @@ while [ "$1" != "" ]; do
       CLUSTER=$1
       ;;
     -n | --new )
-      shift
       NEW_SESSION=true
       ;;
     -* | --* )
@@ -70,13 +70,19 @@ fi
 
 TMUX_SESSION="$ENVIRONMENT-$CLUSTER"
 
-# Kill tmux session if it exists so a new one will be created
-if [ "$NEW_SESSION" = true ]; then
+# tmux bug 3199205 effects tmux 1.4 causes redirecting stdout of tmux commands to hang forever
+# Fix: Just don't redirect stderr from tmux has-session
+if ! tmux has-session -t "$TMUX_SESSION"; then
+  # tmux session doesn't exist so create it 
+  tmux new-session -d -s "$TMUX_SESSION"
+elif [ "$NEW_SESSION" = true ]; then
+  # tmux session exists, but we want a fresh one
   tmux kill-session -t "$TMUX_SESSION"
+  tmux new-session -d -s "$TMUX_SESSION"
+else
+  # tmux session exists, attach to it and exit
+  tmux attach -t "$TMUX_SESSION" && exit 0
 fi
-
-# Attach to tmux session and exit if it exists else create the session
-tmux attach -t "$TMUX_SESSION" 2> /dev/null && exit 0 || tmux new-session -d -s "$TMUX_SESSION"
 
 # Make window 0 active window and rename it
 tmux select-window -t "$TMUX_SESSION":0
