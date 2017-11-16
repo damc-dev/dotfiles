@@ -7,5 +7,7 @@ case `uname` in
   *MINGW32*)
     cdrive="C:/"
   ;;
+  *MINGW64*)
+    cdrive="C:/"
+  ;;
 esac
-
