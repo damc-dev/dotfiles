@@ -31,3 +31,6 @@ augroup END
 
 " vim-json disable syntax conceal
 let g:vim_json_syntax_conceal = 0
+
+" <Ctrl-l> redraws the screen and removes any search highlighting.
+nnoremap <silent> <C-l> :nohl<CR><C-l>

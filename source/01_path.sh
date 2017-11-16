@@ -10,8 +10,11 @@ function path_remove() {
 }
 
 paths=(
-  ~/.local/bin
-  $DOTFILES/bin
+  "$HOME/.local/bin"
+  "$DOTFILES/bin"
+  "/opt/chefdk/embedded/bin"
+  "$GOROOT/bin"
+  "$GOPATH/bin"
 )
 
 export PATH

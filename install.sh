@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+#set -x
 
 function generate_script_alias() {
   local script="${1}"
@@ -25,11 +25,11 @@ done
 
 # Symnlink files to ~/
 for file in $HOME/dotfiles/link/*; do
-  ln -sf "${file}" "${HOME}/$(basename ${file})"
+  ln -sTf "${file}" "${HOME}/$(basename ${file})"
 done
 
 # Symnlink bin files
-ln -fs "${HOME}/dotfiles/bin" "${HOME}/bin"
+ln -fTs "${HOME}/dotfiles/bin" "${HOME}/bin"
 
 echo "# Aliases for bin scripts generated $(date) by $(whoami)" > "${HOME}/.aliases"
 

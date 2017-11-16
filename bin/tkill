@@ -1,0 +1,37 @@
+#!/bin/sh
+kill_session() {
+  tmux kill-session -t $1
+}
+
+regex=$1
+
+if [ "${regex}" == "" ]; then
+  echo "ERROR: session name or regex required"
+  exit 1
+fi
+
+sessions_to_kill=()
+while read -r session; do
+  session_name="${session%%:*}"
+  if [[ "${session_name}" == $regex ]]; then
+    sessions_to_kill+=("$session_name")
+  fi
+done < <(tmux ls)
+
+session_count=${#sessions_to_kill[@]}
+if [ $session_count -eq 0 ]; then
+  echo "No matching sessions found"
+  exit 3
+elif [ $session_count -ge 1 ]; then
+  for session in ${sessions_to_kill[@]}; do
+    echo " * $session"
+  done
+  read -p "Kill matching tmux sessions? (y/n):" kill_prompt
+  if [ "$kill_prompt" == "y" ]; then
+    for session in ${sessions_to_kill[@]}; do
+      kill_session "$session"
+    done
+    echo "Killed Sessions"
+  fi
+fi
+

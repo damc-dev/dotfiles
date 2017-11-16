@@ -1,11 +1,16 @@
-# uuencode alternative
-encode() {
-  python -c 'import sys,uu; uu.encode("'$1'", sys.stdout)'
+# Email me a reminder
+remindme() {
+  echo "Reminder sent from $HOSTNAME at $(date)" | mail -s '!REMINDER '"$1" -r "$(whoami)@up.com" damcelli@up.com
 }
 
 # Replace newlines with commas
 listjoin() {
   cat $@ | awk -vORS=, 'NF { print $1 }'| sed 's/,$/\n/'
+}
+
+# List lines in first file not in second file
+missinglines() {
+  comm -23 <(sort "$1") <(sort "$2")
 }
 
 # File get
@@ -33,8 +38,20 @@ dowhile() {
   done
 }
 
+largestfiles() {
+  find $1 -type f -exec du -ah {} \; | sort -k1 -h
+}
+
+largestdirs() {
+  du -h $1 | sort -k1 -h
+}
+
 TopMemUsage() {
     ps aux | sort -nk +4 | tail
+}
+
+lastcommand() {
+  fc -ln "$1" "$1" | sed '1s/^[[:space:]]*//'
 }
 
 cleantemp() {
@@ -57,32 +74,10 @@ recentRpms() {
   rpm -qa  --queryformat '%{installtime} (%{installtime:date}) %{name}\n' | sort -n -r | head -$NUM
 }
 
-sendme() {
-  FROM="$(whoami)@up.com"
-  TO="damcelli@up.com"
-  FILE=""
-  usage() { echo "$0 usage:"  && grep " .)\ #" $0; exit 0; }
-  while getopts ":ts: --long to:subject:" opt; do
-    case "${opt}" in
-      t | to ) # List of email addresses to send to (comma delimited)
-        TO="${OPTARG}"
-        ;;
-      s | subject ) # Subject of email (default: "!SAVE sendme $file from $HOSTNAME")
-        SUBJECT="${OPTARG}"
-        ;;
-      h | * )
-        usage
-        exit 0
-        ;;
-    esac
-  done
-  shift $(expr $OPTIND - 1 )
-  FILE="$1"
-
-  if [ -z "${SUBJECT}" ]; then
-    SUBJECT="!SAVE sendme $FILE from $HOSTNAME"
+debug_msg() {
+  if [ $DEBUG -eq 1 ]; then
+    echo "$1"
   fi
-  encode $FILE | mail -s "${SUBJECT}" -r "${FROM}" $TO
 }
 
 whenchanged() {

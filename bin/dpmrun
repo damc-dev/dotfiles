@@ -5,9 +5,11 @@ usage() {
 Pmrun a command on a list of hosts.
  
 where:
-    -h, --help    show this help text
-    -u, --user    specify user to pmrun as
-    --no-headers  print no header line
+    -h, --help        show this help text
+    -u, --user        specify user to pmrun as
+    -s, --serial      do not run parallel
+    -f, --fail-fast   while running serially this stops execution if an error is encountered
+    --no-headers      print no header line
 
 Examples:
     $(basename "$0") -u dusm002 starmap-dev 'echo $HOSTNAME'
@@ -41,6 +43,12 @@ while [ "$1" != "" ]; do
 		shift
 		USER_ID=$1
 		;;
+  -s | --serial )
+    SERIAL=true
+    ;;
+  -f | --fail-fast )
+    FAIL_FAST=true
+    ;;
 	--no-headers )
 		NO_HEADERS=true
 		;;
@@ -58,6 +66,10 @@ done
 
 if [ "$list_file" == "" ] | [ "$command" == "" ]; then
     _error "Requires two arguments"
+fi
+
+if [ "$FAIL_FAST" == "true" ] && [ "$SERIAL" != "true" ]; then
+    _error "--fail-fast only applicable with --serial"
 fi
 
 TMP_DIR="$(mktemp -d -t dpmrun.XXXXXXXXXX)"
@@ -83,6 +95,13 @@ for host in `cat $list_file`; do
     ) &
     PID="$!"
     PIDS+=("$PID")
+    if [ "$SERIAL" == "true" ]; then
+      wait $PID
+      read -r host exitCode < "$TMP_DIR/$PID.info"
+		  if [ "$FAIL_FAST" == "true" ] && [ "$exitCode" != "0" ]; then
+        break;
+      fi
+    fi
 done
 
 [ "$NO_HEADERS" != "true" ] && echo ""

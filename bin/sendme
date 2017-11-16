@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+encode() {
+   python -c 'import sys,uu; uu.encode("'$1'", sys.stdout)'
+}
+
+debug_msg() {
+  if [ $DEBUG -eq 1 ]; then
+    echo "$1"
+  fi
+}
+
+usage() { 
+  echo "$0 usage:"  && grep " .)\ #" $0
+  exit 0 
+}
+
+DEBUG=0
+FROM="$(whoami)@up.com"
+TO="damcelli@up.com"
+FILES=()
+
+while getopts "t:s:b:v --long to:subject:body:verbose" opt; do
+  case "${opt}" in
+    v | verbose ) # Show debug messages
+      DEBUG=1
+      debug_msg "Debug enabled"
+      ;;
+    t | to ) # List of email addresses to send to (comma delimited)
+      TO="${OPTARG}"
+      debug_msg "Set TO=$TO"
+      ;;
+    s | subject ) # Subject of email (default: "!SAVE sendme $file from $HOSTNAME")
+      SUBJECT="${OPTARG}"
+      debug_msg "Set SUBJECT=$SUBJECT"
+      ;;
+    b | body ) # Body of email
+      BODY="${OPTARG}"
+      debug_msg "Set BODY=$BODY"
+      ;;
+    h | * )
+      usage
+      exit 0
+      ;;
+  esac
+done
+shift $(expr $OPTIND - 1 )
+
+debug_msg "FILES: "
+for file in "$@"; do
+  FILES+=("$file")
+  debug_msg "  $file"
+done
+
+if [ -z "${SUBJECT}" ]; then
+  SUBJECT="!SAVE sendme ${FILES[@]} from ${HOSTNAME}"
+fi
+
+# Pipe body and encoded files into mail
+(
+  echo "${BODY}"
+  for file in "${FILES[@]}"; do
+    encode "$(readlink -f ${file})"
+  done
+) | mail -s "${SUBJECT}" -r "${FROM}" "${TO}"

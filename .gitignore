@@ -1,3 +1,6 @@
 *.swp
 .git/
 .git
+# Ignore Tmux plugins installed by TPM
+link/.tmux/plugins/*/
+link/.tmux/plugins/tpm
