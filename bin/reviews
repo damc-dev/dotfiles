@@ -1,0 +1,11 @@
+#/bin/bash
+USER="$(whoami)"
+
+if [ -z ${PASWD+x} ]; then
+  read -s -p "Password:" password
+else
+  password="$(base64 --decode <<< ${PASWD})"
+  echo ""
+fi
+
+curl -u "$USER:$password" https://bitbucket.mutualofomaha.com/rest/api/latest/projects/SHA/repos?avatarSize=48&start=0&limit=25 
