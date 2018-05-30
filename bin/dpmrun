@@ -12,7 +12,7 @@ where:
     --no-headers      print no header line
 
 Examples:
-    $(basename "$0") -u dusm002 starmap-dev 'echo $HOSTNAME'
+    $(basename "$0") -u dev123 apache-dev 'echo \$HOSTNAME'
 
 "
 }
@@ -24,8 +24,13 @@ _error() {
     exit 1
 }
 
+# Abort if pmrun command doesn't exist on system
+if ! [ -x "$(command -v pmrun)" ]; then
+  _error "Command requires pmrun, but its not installed"
+fi
+
 # Default User Id
-USER_ID=dusm002
+USER_ID="$(whoami)"
 
 NORMAL=$(tput sgr0)
 BLINK=$(tput blink)
