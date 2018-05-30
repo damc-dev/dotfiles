@@ -31,19 +31,27 @@ done
 # Symnlink bin files
 ln -fTs "${HOME}/dotfiles/bin" "${HOME}/bin"
 
-echo "# Aliases for bin scripts generated $(date) by $(whoami)" > "${HOME}/.aliases"
+ALIAS_FILE="${HOME}/.aliases"
 
 for file in ${HOME}/bin/*; do
   # Make bin files executable
   chmod +x "${file}"
-  # Generate aliases for bin files
-  isFile=$(file -0 "${file}" | cut -d $'\0' -f2)
-  case "${isFile}" in
-    (*text*)
-      generate_script_alias "${file}" >> "${HOME}/.aliases"
-      ;;
-    (*)
-      echo "Can't generate script alias for ${file} it is not a text file"
-      ;;
-  esac
+  
+  ## If its locked down and can't make files executable workaround this by generating aliases for bin files
+  if [[ ! -x "${file}" ]]; then
+    # Generate aliases for bin files
+    isFile=$(file -0 "${file}" | cut -d $'\0' -f2)
+    case "${isFile}" in
+      (*text*)
+        generate_script_alias "${file}" >> "${ALIAS_FILE}"
+        ;;
+      (*)
+        echo "Can't generate script alias for ${file} it is not a text file"
+        ;;
+    esac
+  fi
 done
+
+if [[ -f "${ALIAS_FILE}" ]]; then
+  echo "# Aliases for bin scripts generated $(date) by $(whoami)" > "${ALIAS_FILE}"
+fi
