@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+
+usage() {
+  echo "Usage: $(basename "$0") [OPTION] [LIST_FILE] (COMMAND|Bash Script)
+Pmrun a command on a list of hosts.
+ 
+where:
+    -h, --help        show this help text
+    -u, --user        specify user to pmrun as
+    -s, --serial      do not run parallel
+    -f, --fail-fast   while running serially this stops execution if an error is encountered
+    --no-headers      print no header line
+
+Examples:
+    $(basename "$0") -u dev123 apache-dev 'echo \$HOSTNAME'
+
+"
+}
+
+_error() {
+    local error_msg=$1
+    echo "[ERROR] $error_msg"
+    usage
+    exit 1
+}
+
+# Abort if pmrun command doesn't exist on system
+if ! [ -x "$(command -v ssh)" ]; then
+  _error "Command requires ssh, but its not installed"
+fi
+
+# Default User Id
+USER_ID="$(whoami)"
+
+NORMAL=$(tput sgr0)
+BLINK=$(tput blink)
+UNDERLINE=$(tput smul)
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+
+while [ "$1" != "" ]; do
+    case $1 in
+	-h | --help )
+		usage
+		exit 0
+		;;
+	-u | --user )
+		shift
+		USER_ID=$1
+		;;
+  -s | --serial )
+    SERIAL=true
+    ;;
+  -f | --fail-fast )
+    FAIL_FAST=true
+    ;;
+	--no-headers )
+		NO_HEADERS=true
+		;;
+	-* | --* )
+		_error "Invalid Flag: $1"
+		;;
+	* )
+		list_file=$1
+		shift
+		command="${*}"	
+		;;
+    esac
+    shift
+done
+
+if [ "$list_file" == "" ] | [ "$command" == "" ]; then
+    _error "Requires two arguments"
+fi
+
+if [ "$FAIL_FAST" == "true" ] && [ "$SERIAL" != "true" ]; then
+    _error "--fail-fast only applicable with --serial"
+fi
+
+TMP_DIR="$(mktemp -d -t dpmrun.XXXXXXXXXX)"
+function cleanup {
+    rm -rf $TMP_DIR
+}
+
+trap cleanup EXIT
+
+PIDS=() 
+
+for host in `cat $list_file`; do
+    (
+	THIS_PID="$BASHPID"
+	if [ -f "$command" ]; then
+	    ssh -q -o "StrictHostKeyChecking no" $USER_ID@$host 'bash -s' < $command > "$TMP_DIR/$THIS_PID.out"
+	    exit_code="$?"
+	else
+	    ssh -q -o "StrictHostKeyChecking no" $USER_ID@$host $command &> "$TMP_DIR/$THIS_PID.out"
+	    exit_code="$?"
+	fi
+	echo "$host $exit_code" > "$TMP_DIR/$THIS_PID.info"
+    ) &
+    PID="$!"
+    PIDS+=("$PID")
+    if [ "$SERIAL" == "true" ]; then
+      wait $PID
+      read -r host exitCode < "$TMP_DIR/$PID.info"
+		  if [ "$FAIL_FAST" == "true" ] && [ "$exitCode" != "0" ]; then
+        break;
+      fi
+    fi
+done
+
+[ "$NO_HEADERS" != "true" ] && echo ""
+for PID in "${PIDS[@]}"; do
+    wait $PID
+    read -r host exitCode < "$TMP_DIR/$PID.info"
+    result="$(cat $TMP_DIR/$PID.out)"
+    if [ "$NO_HEADERS" == "true" ]; then
+		echo "$result"
+    else
+		if [ "$exitCode" == "0" ]; then
+			printf "${GREEN}%-3s" $exitCode
+		else
+			printf "${RED}%-3s" $exitCode
+		fi
+		if [ $(echo "$result" | grep -c '$') -le 1 ]; then  
+			printf "[%11s ]${NORMAL}: %s\n\n" $host "$result"
+		else
+			printf "[%11s ]${NORMAL}:\n%s\n\n" $host "$result"
+		fi
+	fi
+done
