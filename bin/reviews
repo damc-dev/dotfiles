@@ -1,11 +1,280 @@
-#/bin/bash
-USER="$(whoami)"
+#!/usr/bin/env groovy
+import com.fasterxml.jackson.annotation.JsonProperty
+@Grapes([
+        @GrabConfig(systemClassLoader=true),
+        @Grab(group='ch.qos.logback', module='logback-classic', version='1.0.9'),
+        @Grab(group='org.slf4j', module='slf4j-api', version='1.7.13'),
+        @Grab('org.slf4j:jcl-over-slf4j:1.7.13'),
 
-if [ -z ${PASWD+x} ]; then
-  read -s -p "Password:" password
-else
-  password="$(base64 --decode <<< ${PASWD})"
-  echo ""
-fi
+        @Grab(group='io.github.openfeign', module='feign-core', version='9.7.0'),
+        @Grab(group='io.github.openfeign', module='feign-jackson', version='9.7.0'),
+        @Grab(group='io.github.openfeign', module='feign-slf4j', version='9.7.0')
+])
 
-curl -u "$USER:$password" https://bitbucket.mutualofomaha.com/rest/api/latest/projects/SHA/repos?avatarSize=48&start=0&limit=25 
+import feign.*
+import feign.auth.BasicAuthRequestInterceptor
+import feign.jackson.JacksonDecoder
+import feign.jackson.JacksonEncoder
+import feign.slf4j.Slf4jLogger
+import groovy.transform.ToString
+import groovy.transform.builder.Builder
+
+
+interface Bitbucket {
+
+    @RequestLine("GET /projects/")
+    @Headers("Content-Type: application/json")
+    Page<Project> projects()
+
+
+    @RequestLine("GET /projects/{projectKey}")
+    @Headers("Content-Type: application/json")
+    Project project(@Param("projectKey") String projectKey)
+
+    @RequestLine("GET /projects/{projectKey}/repos")
+    @Headers("Content-Type: application/json")
+    Page<Repository> repositories(@Param("projectKey") String projectKey)
+
+    @RequestLine("GET /projects/{projectKey}/repos?start={start}&limit={limit}")
+    @Headers("Content-Type: application/json")
+    Page<Repository> repositories(@Param("projectKey") String projectKey, @Param("start") int start, @Param("limit") int limit)
+
+    @RequestLine("GET /projects/{projectKey}/repos/{repositorySlug}")
+    @Headers("Content-Type: application/json")
+    Repository repository(@Param("projectKey") String projectKey, @Param("repositorySlug") String repositorySlug)
+
+
+    @RequestLine("GET /projects/{projectKey}/repos/{repositorySlug}/pull-requests")
+    @Headers("Content-Type: application/json")
+    Page<PullRequest> pullRequests(@Param("projectKey") String projectKey, @Param("repositorySlug") String repositorySlug)
+
+    @RequestLine("GET /projects/{projectKey}/repos/{repositorySlug}/pull-requests")
+    @Headers("Content-Type: application/json")
+    Page<PullRequest> pullRequests(@Param("projectKey") String projectKey, @Param("repositorySlug") String repositorySlug, @QueryMap PullRequestQuery query)
+
+}
+
+@ToString
+@Builder
+class PullRequestQuery {
+    static enum Direction {
+        INCOMING, OUTGOING
+    }
+    static enum State {
+        OPEN, DECLINED, MERGED, ALL
+    }
+
+    Optional<Direction> direction
+    Optional<String> at
+    Optional<State> state
+    Optional<String> order
+    Optional<Boolean> withAttributes
+    Optional<Boolean> withProperties
+
+    Map<String, Object> getQueryMap() {
+
+        return this.class.declaredFields
+            .findAll { !it.synthetic }
+            .findAll {it.type == Optional.class }
+            .findAll { this."$it.name" && this."$it.name".isPresent()}
+            .collectEntries {
+                [ (it.name):this."$it.name".get() ]
+            }
+    }
+}
+
+class PullRequestQueryMapEncoder implements QueryMapEncoder {
+
+    @Override
+    Map<String, Object> encode(Object object) {
+        PullRequestQuery pullRequestQuery = (PullRequestQuery) object
+        return pullRequestQuery.getQueryMap()
+    }
+}
+
+@ToString
+class PageRequest {
+    int start = 0
+    int limit = 25
+}
+
+@ToString
+class Page<T> {
+    int size
+    int limit
+    boolean isLastPage
+    List<T> values
+    int start
+    String filter
+    int nextPageStart
+}
+
+@ToString
+class Links {
+
+    @ToString
+    static class Link {
+        String name
+        String href
+    }
+    List<Link> self
+    List<Link> clone
+}
+
+@ToString
+class Project {
+    String key
+    int id
+    String name
+    String description
+    @JsonProperty("public") boolean isPublic
+    String type
+    Links links
+}
+
+@ToString
+class Repository {
+    String slug
+    int id
+    String name
+    String scmId
+    String state
+    String statusMessage
+    boolean forkable
+    Project project
+    @JsonProperty("public") boolean isPublic
+    Repository origin
+    Links links
+}
+
+@ToString
+class Ref {
+    String id
+    String displayId
+    String latestCommit
+    Repository repository
+}
+
+@ToString
+class User {
+    String name
+    String emailAddress
+    int id
+    String displayName
+    boolean active
+    String slug
+    String type
+}
+
+@ToString
+class Participant {
+    User user
+    String role
+    boolean approved
+    String status
+}
+
+@ToString
+class PullRequest {
+    @ToString
+    static class MergeResult {
+        String outcome
+        boolean current
+    }
+    @ToString
+    static class Properties {
+        MergeResult mergeResult
+        int resolvedTaskCount
+        int commentCount
+        int openTaskCount
+    }
+    int id
+    int version
+    String title
+    String description
+    String state
+    boolean open
+    boolean closed
+    Date createdDate
+    Date updatedDate
+    Ref fromRef
+    Ref toRef
+    String locked
+    Participant author
+    List<Participant> reviewers
+    List<Participant> participants
+    Links links
+    Properties properties
+}
+
+enum Grouping {
+    LATE, NEEDS_REVIEW, REVIEWED
+}
+
+long HOUR = 3600*1000
+String projectKey = "SHA"
+String userId = System.getenv("USERNAME")
+String encodedPswd = System.getenv("PASWD")
+
+if (!userId | !encodedPswd) {
+	println "error: USERNAME and PASSWORD are required"
+	System.exit(1)
+}
+
+Bitbucket bitbucket = Feign.builder()
+.encoder(new JacksonEncoder())
+.decoder(new JacksonDecoder())
+.requestInterceptor(new BasicAuthRequestInterceptor(userId, new String(encodedPswd.decodeBase64())))
+.queryMapEncoder(new PullRequestQueryMapEncoder())
+.logger(new Slf4jLogger(Bitbucket.class))
+.logLevel(Logger.Level.NONE)
+.target(Bitbucket.class, "https://bitbucket.mutualofomaha.com/rest/api/latest")
+
+
+myPullRequests = bitbucket.repositories(projectKey).values.collectMany {
+    bitbucket.pullRequests(
+            it.project.key,
+            it.slug,
+            PullRequestQuery.builder()
+            .state(Optional.of(PullRequestQuery.State.OPEN))
+                    .build()
+    ).values
+}.findAll { pullRequest ->
+    pullRequest.reviewers.find {it.user.name == userId}
+}.sort { pullRequest ->
+    pullRequest.updatedDate
+}
+
+Map<Boolean, PullRequest> reviewed = myPullRequests.groupBy { pullRequest ->
+    if (pullRequest.reviewers.find {it.user.name == userId}.approved) {
+        return Grouping.REVIEWED
+    } else {
+        if (new Date(pullRequest.createdDate.getTime() + 3 * HOUR).before(new Date())) {
+            return Grouping.LATE
+        } else {
+            return Grouping.NEEDS_REVIEW
+        }
+    }
+}
+
+def printPullRequest(PullRequest pullRequest, userId) {
+    def me = pullRequest.reviewers.find {it.user.name == userId}
+    def icon =  me.status == "APPROVED" ? "[\u2713]" : "[ ]"
+    println "${icon} ${pullRequest.fromRef.repository.name} [${pullRequest.title}]  ${me.status}"
+    println "   * Link: ${pullRequest.links.self.collect { it.href }.find()}"
+    println "   * Author: ${pullRequest.author.user.name}"
+    println "   * Created: ${pullRequest.createdDate}"
+    println "   * Updated: ${pullRequest.updatedDate}"
+	println ""
+}
+if (reviewed) {
+    reviewed.sort().each { status, pullRequests ->
+        println "\n************ $status ************\n"
+        pullRequests.each {
+            printPullRequest(it, userId)
+        }
+
+    }
+} else {
+    println " NO OPEN PULL REQUESTS... HURRAY!!!"
+}
