@@ -208,7 +208,7 @@ class PullRequest {
 }
 
 enum Grouping {
-    LATE, NEEDS_REVIEW, REVIEWED
+    LATE, NEEDS_REVIEW, REVIEWED_NEEDS_WORK, REVIEWED_APPROVED
 }
 
 long HOUR = 3600*1000
@@ -246,8 +246,12 @@ myPullRequests = bitbucket.repositories(projectKey).values.collectMany {
 }
 
 Map<Boolean, PullRequest> reviewed = myPullRequests.groupBy { pullRequest ->
-    if (pullRequest.reviewers.find {it.user.name == userId}.approved) {
-        return Grouping.REVIEWED
+	def me = pullRequest.reviewers.find {it.user.name == userId}
+	
+    if (me.status == "NEEDS_WORK") {
+		return Grouping.REVIEWED_NEEDS_WORK
+	} else if (me.approved) {
+        return Grouping.REVIEWED_APPROVED
     } else {
         if (new Date(pullRequest.createdDate.getTime() + 3 * HOUR).before(new Date())) {
             return Grouping.LATE
