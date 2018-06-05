@@ -18,6 +18,7 @@ import feign.jackson.JacksonEncoder
 import feign.slf4j.Slf4jLogger
 import groovy.transform.ToString
 import groovy.transform.builder.Builder
+import groovyx.gpars.GParsPool
 
 
 interface Bitbucket {
@@ -74,12 +75,12 @@ class PullRequestQuery {
     Map<String, Object> getQueryMap() {
 
         return this.class.declaredFields
-            .findAll { !it.synthetic }
-            .findAll {it.type == Optional.class }
-            .findAll { this."$it.name" && this."$it.name".isPresent()}
-            .collectEntries {
-                [ (it.name):this."$it.name".get() ]
-            }
+                .findAll { !it.synthetic }
+                .findAll {it.type == Optional.class }
+                .findAll { this."$it.name" && this."$it.name".isPresent()}
+                .collectEntries {
+            [ (it.name):this."$it.name".get() ]
+        }
     }
 }
 
@@ -217,40 +218,41 @@ String userId = System.getenv("USERNAME")
 String encodedPswd = System.getenv("PASWD")
 
 if (!userId | !encodedPswd) {
-	println "error: USERNAME and PASSWORD are required"
-	System.exit(1)
+    println "error: USERNAME and PASSWORD are required"
+    System.exit(1)
 }
 
 Bitbucket bitbucket = Feign.builder()
-.encoder(new JacksonEncoder())
-.decoder(new JacksonDecoder())
-.requestInterceptor(new BasicAuthRequestInterceptor(userId, new String(encodedPswd.decodeBase64())))
-.queryMapEncoder(new PullRequestQueryMapEncoder())
-.logger(new Slf4jLogger(Bitbucket.class))
-.logLevel(Logger.Level.NONE)
-.target(Bitbucket.class, "https://bitbucket.mutualofomaha.com/rest/api/latest")
+        .encoder(new JacksonEncoder())
+        .decoder(new JacksonDecoder())
+        .requestInterceptor(new BasicAuthRequestInterceptor(userId, new String(encodedPswd.decodeBase64())))
+        .queryMapEncoder(new PullRequestQueryMapEncoder())
+        .logger(new Slf4jLogger(Bitbucket.class))
+        .logLevel(Logger.Level.NONE)
+        .target(Bitbucket.class, "https://bitbucket.mutualofomaha.com/rest/api/latest")
 
-
-myPullRequests = bitbucket.repositories(projectKey).values.collectMany {
-    bitbucket.pullRequests(
-            it.project.key,
-            it.slug,
-            PullRequestQuery.builder()
-            .state(Optional.of(PullRequestQuery.State.OPEN))
-                    .build()
-    ).values
-}.findAll { pullRequest ->
-    pullRequest.reviewers.find {it.user.name == userId}
-}.sort { pullRequest ->
-    pullRequest.updatedDate
+GParsPool.withPool {
+    myPullRequests = bitbucket.repositories(projectKey).values.collectManyParallel {
+        bitbucket.pullRequests(
+                it.project.key,
+                it.slug,
+                PullRequestQuery.builder()
+                        .state(Optional.of(PullRequestQuery.State.OPEN))
+                        .build()
+        ).values
+    }.findAll { pullRequest ->
+        pullRequest.reviewers.find {it.user.name == userId}
+    }.sort { pullRequest ->
+        pullRequest.updatedDate
+    }
 }
 
 Map<Boolean, PullRequest> reviewed = myPullRequests.groupBy { pullRequest ->
-	def me = pullRequest.reviewers.find {it.user.name == userId}
-	
+    def me = pullRequest.reviewers.find {it.user.name == userId}
+
     if (me.status == "NEEDS_WORK") {
-		return Grouping.REVIEWED_NEEDS_WORK
-	} else if (me.approved) {
+        return Grouping.REVIEWED_NEEDS_WORK
+    } else if (me.approved) {
         return Grouping.REVIEWED_APPROVED
     } else {
         if (new Date(pullRequest.createdDate.getTime() + 3 * HOUR).before(new Date())) {
@@ -269,7 +271,7 @@ def printPullRequest(PullRequest pullRequest, userId) {
     println "   * Author: ${pullRequest.author.user.name}"
     println "   * Created: ${pullRequest.createdDate}"
     println "   * Updated: ${pullRequest.updatedDate}"
-	println ""
+    println ""
 }
 if (reviewed) {
     reviewed.sort().each { status, pullRequests ->
