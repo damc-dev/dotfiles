@@ -1,3 +1,9 @@
+# Create and navigate into directory
+mkcd() {
+  mkdir -p -- "$1" &&
+    cd -P -- "$1"
+}
+
 # Email me a reminder
 remindme() {
   echo "Reminder sent from $HOSTNAME at $(date)" | mail -s '!REMINDER '"$1" -r "$(whoami)@up.com" damcelli@up.com
