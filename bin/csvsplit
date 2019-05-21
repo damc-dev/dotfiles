@@ -1,0 +1,16 @@
+# SOURCE: https://gist.github.com/looselycoupled/4f23a6ed698b9c62387c596f5613fd6a
+# The following will split a CSV (file.csv) into multiple parts of 1 million lines each
+# with each part having its own header.  
+#
+# PREFIX denotes the filename to use for the parts.  A number will be added to the end.
+
+if [  "$1" == "" ] || [ "$2" == "" ]; then
+    echo "Error: missing required arguments [file] [split size]"
+    exit 1
+fi
+
+IN_FILE=$1
+SPLIT_SIZE=$2
+
+tail -n +2 "$IN_FILE" |
+split -d -l $SPLIT_SIZE - --filter='sh -c "{ head -n1 '$IN_FILE'; cat; } > $FILE"' PREFIX
