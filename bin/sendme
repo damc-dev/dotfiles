@@ -34,7 +34,7 @@ DEBUG=0
 TO="${MY_EMAIL}"
 FILES=()
 
-while getopts "t:s:b:v --long to:subject:body:verbose" opt; do
+while getopts "t:s:b:vh --long to:subject:body:verbose" opt; do
   case "${opt}" in
     v | verbose ) # Show debug messages
       DEBUG=1
