@@ -12,12 +12,10 @@ debug_msg() {
 
 usage() { 
   echo "$0 usage:"  && grep " .)\ #" $0
-  exit 0 
 }
 
 DEBUG=0
-FROM="$(whoami)@up.com"
-TO="damcelli@up.com"
+TO="${MY_EMAIL}"
 FILES=()
 
 while getopts "t:s:b:v --long to:subject:body:verbose" opt; do
@@ -26,7 +24,7 @@ while getopts "t:s:b:v --long to:subject:body:verbose" opt; do
       DEBUG=1
       debug_msg "Debug enabled"
       ;;
-    t | to ) # List of email addresses to send to (comma delimited)
+    t | to ) # List of email addresses to send to (comma delimited) if not specified uses value in MY_EMAIL env variable
       TO="${OPTARG}"
       debug_msg "Set TO=$TO"
       ;;
@@ -46,6 +44,12 @@ while getopts "t:s:b:v --long to:subject:body:verbose" opt; do
 done
 shift $(expr $OPTIND - 1 )
 
+if [ -z "${TO}" ]; then
+  echo "Error: No target email address specified"
+  usage()
+  exit 2
+fi
+
 debug_msg "FILES: "
 for file in "$@"; do
   FILES+=("$file")
@@ -62,4 +66,4 @@ fi
   for file in "${FILES[@]}"; do
     encode "$(readlink -f ${file})"
   done
-) | mail -s "${SUBJECT}" -r "${FROM}" "${TO}"
+) | mail -s "${SUBJECT} "${TO}"
