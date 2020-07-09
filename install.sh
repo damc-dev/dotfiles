@@ -12,8 +12,10 @@ function generate_script_alias() {
 shopt -s dotglob
 shopt -s nullglob
 
+#command -v realpath >/dev/null 2>&1 || realpath() { [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}" }
+
 # Change to dotfiles directory
-cd "$(dirname "$(readlink -f "${0}")")"
+cd "$(dirname $(realpath "$0"))"
 
 # Recursively download git submodules
 git submodule update --init --recursive
@@ -25,11 +27,17 @@ done
 
 # Symnlink files to ~/
 for file in $HOME/dotfiles/link/*; do
-  ln -sTf "${file}" "${HOME}/$(basename ${file})"
+  targetlink="${HOME}/$(basename ${file})"
+  if [ ! -L "${targetlink}" ]; then
+    ln -sf "${file}" "${targetlink}"
+  fi
 done
 
 # Symnlink bin files
-ln -fTs "${HOME}/dotfiles/bin" "${HOME}/bin"
+binlink="${HOME}/bin"
+if [ ! -L "${binlink}" ]; then
+  ln -sf "${HOME}/dotfiles/bin" "${binlink}"
+fi
 
 ALIAS_FILE="${HOME}/.aliases"
 
