@@ -88,7 +88,10 @@ PIDS=()
 
 for host in `cat $list_file`; do
     (
-	THIS_PID="$BASHPID"
+	# PID of Subprocess
+	# BASH > 4.0 use $BASHPID for BASH < 4.0 use $(exec sh -c 'echo "$PPID"')
+	# https://tiswww.case.edu/php/chet/bash/CHANGES
+	THIS_PID="${BASHPID:-$(exec sh -c 'echo "$PPID"')}"
 	if [ -f "$command" ]; then
 	    pmrun -p -h $host $USER_ID 'cat | bash /dev/stdin' < $command > "$TMP_DIR/$THIS_PID.out"
 	    exit_code="$?"
