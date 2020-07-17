@@ -28,6 +28,9 @@ done
 # Symnlink files to ~/
 for file in $HOME/dotfiles/link/*; do
   targetlink="${HOME}/$(basename ${file})"
+  if [ ! -L "${targetlink}" ] && [ -f "${targetlink}" ]; then
+    mv "${targetlink}" "${targetlink}.bak"
+  fi
   if [ ! -L "${targetlink}" ]; then
     ln -sf "${file}" "${targetlink}"
   fi
