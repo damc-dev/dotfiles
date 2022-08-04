@@ -42,6 +42,14 @@ nopassword() {
   echo "password unset"
 }
 
+# Retrieve password from keychain
+function cpfromkeychain() {
+  keychainItem="$1"
+  security find-generic-password -w -s "$keychainItem" | pbcopy
+  # Run in background and clear clipboard after 15 seconds
+  ( { sleep 15; pbcopy < /dev/null; } &) 
+}
+
 dowhile() {
   while true; do
     $@
