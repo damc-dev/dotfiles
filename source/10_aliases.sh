@@ -3,6 +3,8 @@ if [ -f ~/.aliases ]; then
   source ~/.aliases
 fi
 
+alias ll="ls -l"
+
 # Easier navigation: .., ..., ...., ....., ~ and -
 alias ..="cd .."
 alias ...="cd ../.."
@@ -38,9 +40,23 @@ alias largest_directories='du -sh * | sort -hr | head -n 10'
 # find . -name .gitattributes | map dirname
 alias map="xargs -n1"
 
+alias noheader='tail -n +2'
+
+
 # URL-encode strings
 alias urlencode='python -c "import sys, urllib as ul; print ul.quote_plus(sys.argv[1]);"'
 
 alias reload='source ~/.bashrc'
 
 alias generate_password='< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32};echo;'
+
+alias beep="osascript -e 'beep 5'"
+
+# AWS CDK
+alias cdk1="npx aws-cdk@1.x"
+alias cdk2"=npx aws-cdk@2.x"
+alias cdk="npx aws-cdk@2.x"
+alias ls_cdk="find . -type f -maxdepth 2 -name 'cdk.json' -exec dirname '{}' \;"
+
+
+
