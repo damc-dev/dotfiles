@@ -14,6 +14,10 @@ listjoin() {
   cat $@ | awk -vORS=, 'NF { print $1 }'| sed 's/,$/\n/'
 }
 
+listsort() {
+  echo "${1}" | sed -e $'s/,\s*/\\\n/g' | sort -d | tr '\n' ',' | sed 's/.$//;s/, */, /g'
+}
+
 # List lines in first file not in second file
 missinglines() {
   comm -23 <(sort "$1") <(sort "$2")
@@ -166,4 +170,94 @@ whenchanged() {
 function reload() {
     source ~/.bashrc
     source ~/.bash_profile
+}
+
+function focus_terminal() {
+  if [ -z "${1}" ]; then
+    osascript -e 'tell application "Terminal" to activate'
+  else
+    osascript -e 'tell application "Terminal"' -e 'activate' -e "display alert \"${1}\"" -e 'end tell'
+  fi
+}
+
+function awsSplitRoleArn() {
+    roleArn=$(aws sts get-caller-identity --query Arn --output text)
+    IFS=':'; read -a arnArr <<< "$roleArn"
+    accountId="${arnArr[4]}"
+    IFS='/'; read -a roleArr <<< "${arnArr[5]}"
+    roleName="${roleArr[1]}"
+    echo "${accountId} ${roleName}"
+}
+
+function lb() {
+  if [ -z "$NOTES_DIR" ]; then
+    echo "Must set NOTES_DIR environment variable before creating new journal file"
+    return
+  fi
+  if [ -z "$1" ]; then
+    journalfile=$NOTES_DIR/$(date +%Y-%m-%d-%u.md);
+  else
+    journalfile=$NOTES_DIR/$(date +%Y-%m-%d)_$1.md;
+  fi
+
+  if [[ ! -f $journalfile ]]; then
+    # Create journal file with today's date as Heading 1
+    echo "# "$(date "+%A, %e %B, %Y") >> $journalfile;
+    # Add to git repo
+  else
+    echo "File already exists: $journalfile";
+  fi;
+
+  # Opens to last line in file
+  code -n ${NOTES_DIR} -g $journalfile:9999999; 
+}
+
+function notes() {
+  if [ -z "$NOTES_DIR" ]; then
+    echo "Must set NOTES_DIR environment variable to open notes files"
+    return
+  fi
+  code ${NOTES_DIR}
+}
+
+
+function lpl() {
+  if [[ "$(lpass status)" != *"Logged in"* ]]; then
+    lpass login $LASTPASS_EMAIL
+  fi
+}
+
+function lpf() {
+  lpl && lpass show -c --password $(lpass ls  | fzf | awk '{print $(NF)}' | sed 's/\]//g')
+}
+
+function lps() {
+  lpl && lpass show $(lpass ls  | fzf | awk '{print $(NF)}' | sed 's/\]//g')
+}
+
+# Select and open project in VsCode
+function codew() {
+  code ~/workspace/$(find ~/workspace/* -maxdepth 0 -type d | awk -F/ '{print $NF}'  | fzf)
+}
+
+# fd - cd to selected sub-directory
+fd() {
+  DIR=`find * -maxdepth 0 -type d -print 2> /dev/null | fzf-tmux` \
+    && cd "$DIR"
+}
+
+# fda - including hidden directories
+fda() {
+  local dir
+  dir=$(find ${1:-.} -maxdepth 1 -type d 2> /dev/null | fzf +m) && cd "$dir"
+}
+
+# cd to the path of the finder window
+cdf() {
+	target=$(osascript -e 'tell application "Finder" to if (count of Finder windows) > 0 then get POSIX path of (target of front Finder window as text)')
+	if [ "$target" != "" ]; then
+		cd "$target" || exit ; pwd
+	else
+		echo 'No Finder window found' >&2
+	fi
 }
