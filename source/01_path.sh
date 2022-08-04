@@ -10,11 +10,15 @@ function path_remove() {
 }
 
 paths=(
+  "/usr/local/sbin"
   "$HOME/.local/bin"
   "$DOTFILES/bin"
   "/opt/chefdk/embedded/bin"
   "$GOROOT/bin"
   "$GOPATH/bin"
+  "/usr/local/opt/libpq/bin"
+  "/usr/local/opt/python@3.8/bin"
+  "$HOME/.poetry/bin"
 )
 
 export PATH
