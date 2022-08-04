@@ -46,8 +46,6 @@ alias noheader='tail -n +2'
 # URL-encode strings
 alias urlencode='python -c "import sys, urllib as ul; print ul.quote_plus(sys.argv[1]);"'
 
-alias reload='source ~/.bashrc'
-
 alias generate_password='< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32};echo;'
 
 alias beep="osascript -e 'beep 5'"
