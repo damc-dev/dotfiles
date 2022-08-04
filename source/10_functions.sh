@@ -163,4 +163,7 @@ whenchanged() {
 
 }
 
-
+function reload() {
+    source ~/.bashrc
+    source ~/.bash_profile
+}
